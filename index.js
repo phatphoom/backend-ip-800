@@ -3,8 +3,6 @@ const cors = require("cors");
 const express = require("express");
 
 const app = express();
-const conn = require("./config/db");
-
 const ApiRouter = require("./routes/index");
 
 app.use(express.json());
