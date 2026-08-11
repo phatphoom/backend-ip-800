@@ -1,0 +1,446 @@
+# 📘 REST API Specification & Integration Guide
+
+เอกสารข้อกำหนด API (API Specification) สำหรับทีม Frontend (React Native Expo / Web Applications)  
+อัปเดตล่าสุดตามซอร์สโค้ดของระบบ Backend Express.js (พอร์ตเริ่มต้น: `3036` หรือตาม `.env`)
+
+---
+
+## 📑 สารบัญ
+1. [การเชื่อมต่อ & Base URL (React Native / Expo Guide)](#1-การเชื่อมต่อ--base-url-react-native--expo-guide)
+2. [รูปแบบโครงสร้าง Response มาตรฐาน](#2-รูปแบบโครงสร้าง-response-มาตรฐาน)
+3. [ระบบสมัครสมาชิก & เข้าสู่ระบบ (Authentication)](#3-ระบบสมัครสมาชิก--เข้าสู่ระบบ-authentication)
+4. [ระบบอัปโหลดรูปภาพ (File Upload - Base64)](#4-ระบบอัปโหลดรูปภาพ-file-upload---base64)
+5. [ระบบหมวดหมู่สินค้า (Categories)](#5-ระบบหมวดหมู่สินค้า-categories)
+6. [ระบบจัดการสินค้า (Products)](#6-ระบบจัดการสินค้า-products)
+7. [ระบบตรวจสอบสถานะเซิร์ฟเวอร์ (Health Check)](#7-ระบบตรวจสอบสถานะเซิร์ฟเวอร์-health-check)
+
+---
+
+## 1. การเชื่อมต่อ & Base URL (React Native / Expo Guide)
+
+เนื่องจากการทดสอบบน React Native / Expo มีสภาวะแวดล้อมต่างกัน ให้ตั้งค่า **BASE_URL** ดังนี้:
+
+- **Expo Environment Variable (`.env` ใน Expo):** `EXPO_PUBLIC_API_BASE_URL`
+- **เครื่องจริง / Physical Device (Expo Go):** ใช้ IP ของเครื่องคอมพิวเตอร์ในวง LAN เดียวกัน (เช่น `http://192.168.1.50:3036`)
+- **Android Emulator:** `http://10.0.2.2:3036`
+- **iOS Simulator:** `http://localhost:3036`
+
+---
+
+## 2. รูปแบบโครงสร้าง Response มาตรฐาน
+
+ทุก API ตอบกลับข้อมูลในรูปแบบ **JSON** เสมอ
+
+### 🟢 2.1 Success Response (200 OK / 201 Created)
+```json
+{
+  "success": true,
+  "message": "ข้อความอธิบายการทำงานสำเร็จ (Optional)",
+  "data": { ... } // หรือ Array [...]
+}
+```
+
+### 🔴 2.2 Error Response (400 Bad Request / 401 Unauthorized / 404 Not Found / 500 Server Error)
+```json
+{
+  "success": false,
+  "message": "ข้อความอธิบายข้อผิดพลาด",
+  "errors": {
+    "field_name": "ข้อความระบุฟิลด์ที่ผิดพลาด (ถ้ามี)"
+  }
+}
+```
+
+---
+
+## 3. ระบบสมัครสมาชิก & เข้าสู่ระบบ (Authentication)
+
+ Base Path: `/api/auth`
+
+### 3.1 สมัครสมาชิก (Register)
+- **Endpoint:** `POST /api/auth/register`
+- **Authentication:** ไม่ต้องระบุ (Public)
+- **Headers:** `Content-Type: application/json`
+
+#### Request Body:
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `username` | String | ✅ ใช่ | ชื่อผู้ใช้งาน |
+| `email` | String | ✅ ใช่ | อีเมล (ต้องไม่ซ้ำในระบบ) |
+| `password` | String | ✅ ใช่ | รหัสผ่าน (ต้องมีความยาวอย่างน้อย 6 ตัวอักษร) |
+
+```json
+{
+  "username": "johndoe",
+  "email": "john@example.com",
+  "password": "secretpassword"
+}
+```
+
+#### Response (201 Created):
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "user_id": "user_0001",
+    "username": "johndoe",
+    "email": "john@example.com"
+  }
+}
+```
+
+---
+
+### 3.2 เข้าสู่ระบบ (Login)
+- **Endpoint:** `POST /api/auth/login`
+- **Authentication:** ไม่ต้องระบุ (Public)
+- **Headers:** `Content-Type: application/json`
+
+#### Request Body:
+```json
+{
+  "email": "john@example.com",
+  "password": "secretpassword"
+}
+```
+
+#### Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIj...",
+    "user": {
+      "user_id": "user_0001",
+      "username": "johndoe",
+      "email": "john@example.com",
+      "role": "user"
+    }
+  }
+}
+```
+
+> 📌 **สำหรับทีม Frontend:**  
+> นำ `token` ที่ได้ไปบันทึกลงใน `AsyncStorage` (React Native) หรือ `localStorage` (Web) เพื่อใช้ส่งใน Header `Authorization: Bearer <TOKEN>` สำหรับ API ที่ต้องระบุตัวตน
+
+---
+
+### 3.3 ดึงข้อมูลผู้ใช้ปัจจุบัน (Get Current Profile)
+- **Endpoint:** `GET /api/auth/me`
+- **Authentication:** 🔐 ต้องระบุ Token
+- **Headers:** 
+  - `Authorization: Bearer <YOUR_JWT_TOKEN>`
+
+#### Response (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "user_id": "user_0001",
+    "username": "johndoe",
+    "email": "john@example.com",
+    "role": "user",
+    "created_at": "2026-08-11T10:00:00.000Z"
+  }
+}
+```
+
+---
+
+## 4. ระบบอัปโหลดรูปภาพ (File Upload - Base64)
+
+ Base Path: `/api/upload`  
+*(หมายเหตุ: ระบบเปลี่ยนเป็นแนวทาง Base64 JSON เพื่อให้ใช้งานร่วมกับ React Native Expo / Serverless ได้โดยไม่ใช้ Multer)*
+
+### 4.1 อัปโหลดรูปภาพ (Upload Image)
+- **Endpoint:** `POST /api/upload`
+- **Authentication:** ไม่ต้องระบุ (Public)
+- **Headers:** `Content-Type: application/json`
+
+#### Request Body:
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `image` | String | ✅ ใช่ | ข้อมูลรูปภาพในรูปแบบ Base64 (เช่น `data:image/png;base64,...` หรือ Base64 String เพียวๆ) |
+| `filename` | String | ❌ ไม่จำเป็น | ชื่อไฟล์ต้นฉบับ (เช่น `photo.png`) |
+
+#### ข้อจำกัด (Constraints):
+- **ชนิดไฟล์ที่อนุญาต:** `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`
+- **ขนาดไฟล์สูงสุด:** ไม่เกิน **5 MB**
+
+```json
+{
+  "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "filename": "my_product.png"
+}
+```
+
+#### Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "อัปโหลดรูปภาพสำเร็จ (Base64)",
+  "data": {
+    "filename": "1770800000000-123456789.png",
+    "size_bytes": 70,
+    "image_url": "/uploads/products/1770800000000-123456789.png"
+  }
+}
+```
+
+> 💡 **คำแนะนำการนำไปแสดงผล:**  
+> นำ `image_url` ที่ได้จาก response ไปบันทึกใส่ฟิลด์ `image_url` ในการสร้างสินค้า (`POST /api/product/add`)  
+> และเวลาแสดงผลใน React Native ให้ประกอบ URL เต็ม: `<Image source={{ uri: `${BASE_URL}${item.image_url}` }} />`
+
+---
+
+## 5. ระบบหมวดหมู่สินค้า (Categories)
+
+ Base Path: `/api/category`
+
+### 5.1 ดึงรายการหมวดหมู่ทั้งหมด (Get All Categories)
+- **Endpoint:** `GET /api/category`
+- **Authentication:** ไม่ต้องระบุ (Public)
+
+#### Response (200 OK):
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "cate_id": "cate_0001",
+      "cate_name": "Electronics"
+    },
+    {
+      "cate_id": "cate_0002",
+      "cate_name": "Accessories"
+    }
+  ]
+}
+```
+
+---
+
+## 6. ระบบจัดการสินค้า (Products)
+
+ Base Path: `/api/product`
+
+### 6.1 ดึงรายการสินค้าทั้งหมด (Get All Products)
+- **Endpoint:** `GET /api/product/all`
+- **Authentication:** ไม่ต้องระบุ (Public)
+
+#### Response (200 OK):
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "prod_id": "prod_0001",
+      "prod_name": "Mechanical Keyboard",
+      "description": "RGB Backlit Gaming Keyboard",
+      "price": "1990.00",
+      "currency": "THB",
+      "cate_id": "cate_0001",
+      "cate_name": "Electronics",
+      "image_url": "/uploads/products/1770800000000-123456789.png",
+      "rating_rate": "4.5",
+      "rating_count": 12,
+      "in_stock": true,
+      "stock_count": 25,
+      "discount_pct": 10,
+      "created_at": "2026-08-11T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### 6.2 ดึงรายละเอียดสินค้าตาม ID (Get Product by ID)
+- **Endpoint:** `GET /api/product/:id`
+- **Authentication:** ไม่ต้องระบุ (Public)
+- **URL Parameter:** `:id` = รหัสสินค้า (เช่น `prod_0001`)
+
+#### Response (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "prod_id": "prod_0001",
+    "prod_name": "Mechanical Keyboard",
+    "description": "RGB Backlit Gaming Keyboard",
+    "price": "1990.00",
+    "currency": "THB",
+    "cate_id": "cate_0001",
+    "image_url": "/uploads/products/1770800000000-123456789.png",
+    "rating_rate": "4.5",
+    "rating_count": 12,
+    "in_stock": true,
+    "stock_count": 25,
+    "discount_pct": 10,
+    "created_at": "2026-08-11T10:00:00.000Z"
+  }
+}
+```
+
+#### Error Response (404 Not Found):
+```json
+{
+  "success": false,
+  "message": "Product not found"
+}
+```
+
+---
+
+### 6.3 เพิ่มสินค้าใหม่ (Create Product)
+- **Endpoint:** `POST /api/product/add`
+- **Authentication:** ไม่ต้องระบุ (Public)
+- **Headers:** `Content-Type: application/json`
+
+#### Request Body:
+| Field | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `prod_name` | String | ✅ ใช่ | - | ชื่อสินค้า |
+| `price` | Number | ✅ ใช่ | - | ราคาสินค้า (ต้องเป็นตัวเลข >= 0) |
+| `cate_id` | String | ✅ ใช่ | - | รหัสหมวดหมู่สินค้า (เช่น `cate_0001`) |
+| `description` | String | ❌ ไม่จำเป็น | `null` | รายละเอียดสินค้า |
+| `currency` | String | ❌ ไม่จำเป็น | `"THB"` | สกุลเงิน |
+| `image_url` | String | ❌ ไม่จำเป็น | `null` | Path รูปภาพที่ได้จาก API Upload |
+| `rating_rate` | Number | ❌ ไม่จำเป็น | `0` | คะแนนรีวิว (0 - 5) |
+| `rating_count` | Number | ❌ ไม่จำเป็น | `0` | จำนวนคนรีวิว |
+| `in_stock` | Boolean | ❌ ไม่จำเป็น | `true` | สถานะการมีสินค้าในสต็อก |
+| `stock_count` | Number | ❌ ไม่จำเป็น | `0` | จำนวนสินค้าคงเหลือ |
+| `discount_pct` | Number | ❌ ไม่จำเป็น | `0` | เปอร์เซ็นต์ส่วนลด (%) |
+
+```json
+{
+  "prod_name": "Gaming Mouse Wireless",
+  "description": "Ergonomic 16000 DPI Mouse",
+  "price": 1290,
+  "currency": "THB",
+  "cate_id": "cate_0001",
+  "image_url": "/uploads/products/1770800000000-123456789.png",
+  "in_stock": true,
+  "stock_count": 50,
+  "discount_pct": 5
+}
+```
+
+#### Response (201 Created):
+```json
+{
+  "success": true,
+  "message": "Product created successfully",
+  "data": {
+    "newProduct": {
+      "prod_id": "prod_0002",
+      "prod_name": "Gaming Mouse Wireless",
+      "description": "Ergonomic 16000 DPI Mouse",
+      "price": 1290,
+      "currency": "THB",
+      "cate_id": "cate_0001",
+      "image_url": "/uploads/products/1770800000000-123456789.png",
+      "rating_rate": 0,
+      "rating_count": 0,
+      "in_stock": true,
+      "stock_count": 50,
+      "discount_pct": 5
+    }
+  }
+}
+```
+
+---
+
+### 6.4 แก้ไขข้อมูลสินค้า (Update Product)
+- **Endpoint:** `PUT /api/product/edit/:id`
+- **Authentication:** ไม่ต้องระบุ (Public)
+- **URL Parameter:** `:id` = รหัสสินค้า (เช่น `prod_0001`)
+
+#### Request Body:
+ส่งเฉพาะฟิลด์ที่ต้องการแก้ไขเข้ามาใน JSON:
+```json
+{
+  "price": 1190,
+  "stock_count": 45,
+  "discount_pct": 10
+}
+```
+
+#### Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "Product updated successfully",
+  "data": {
+    "id": "prod_0001",
+    "price": 1190,
+    "stock_count": 45,
+    "discount_pct": 10
+  }
+}
+```
+
+---
+
+### 6.5 ลบสินค้า (Delete Product)
+- **Endpoint:** `DELETE /api/product/delete/:id`
+- **Authentication:** ไม่ต้องระบุ (Public)
+- **URL Parameter:** `:id` = รหัสสินค้า (เช่น `prod_0001`)
+
+#### Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "Product deleted successfully"
+}
+```
+
+---
+
+## 7. ระบบตรวจสอบสถานะเซิร์ฟเวอร์ (Health Check)
+
+### 7.1 Check Health Status
+- **Endpoint:** `GET /health`
+- **Response (200 OK):**
+```json
+{
+  "status": "UP",
+  "timestamp": "2026-08-11T10:00:00.000Z"
+}
+```
+
+---
+
+## 💻 ตัวอย่าง Helper Function สำหรับ React Native Expo (axios / fetch)
+
+```javascript
+import axios from 'axios';
+
+// ตั้งค่า Base URL ตามเครื่องที่ใช้ทดสอบ
+const API_BASE_URL = 'http://192.168.1.50:3036'; // เปลี่ยนเป็น IP คอมพิวเตอร์ของคุณ
+
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// ฟังก์ชันอัปโหลดรูป Base64
+export const uploadImageBase64 = async (base64Image, fileName) => {
+  const response = await apiClient.post('/api/upload', {
+    image: base64Image,
+    filename: fileName,
+  });
+  return response.data;
+};
+
+// ฟังก์ชันดึงรูปภาพพร้อมพาทเต็ม
+export const getFullImageUrl = (relativePath) => {
+  if (!relativePath) return null;
+  return `${API_BASE_URL}${relativePath}`;
+};
+```
