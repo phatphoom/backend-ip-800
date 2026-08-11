@@ -7,7 +7,7 @@ const ApiRouter = require("./routes/index");
 
 const path = require("path");
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 app.use(cors());
 
 // Serve static uploaded files
