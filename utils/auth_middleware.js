@@ -1,8 +1,16 @@
 const jwt = require("jsonwebtoken");
 
 const verifyToken = (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Format: Bearer TOKEN
+  const authHeader = req.headers["authorization"] || req.headers["Authorization"];
+  let token = null;
+
+  if (authHeader) {
+    if (authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7).trim();
+    } else {
+      token = authHeader.trim();
+    }
+  }
 
   if (!token) {
     return res.status(401).json({
@@ -19,13 +27,31 @@ const verifyToken = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(403).json({
+    return res.status(401).json({
       success: false,
       message: "Invalid or expired token",
     });
   }
 };
 
+const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    const userRole = req.user && req.user.role ? String(req.user.role).toLowerCase() : "";
+    const normalizedAllowed = allowedRoles.map((r) => String(r).toLowerCase());
+
+    if (!req.user || !normalizedAllowed.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: Insufficient permissions",
+      });
+    }
+    next();
+  };
+};
+
 module.exports = {
   verifyToken,
+  authorizeRoles,
 };
+
+
