@@ -53,5 +53,3 @@ module.exports = {
   verifyToken,
   authorizeRoles,
 };
-
-
