@@ -1,6 +1,5 @@
 const conn = require("../config/db");
 const profileService = require("../services/profile_service");
-const { generateSequentialId } = require("../utils/generateId");
 
 // ดึงข้อมูล Profile ของตนเองที่เข้าสู่ระบบอยู่
 const getMyProfile = async (req, res) => {
@@ -55,7 +54,14 @@ const getProfileByUserId = async (req, res) => {
 // สร้างหรือแก้ไข Profile ของตนเอง (Upsert Profile)
 const updateMyProfile = async (req, res) => {
   const userId = req.user.user_id;
-  const { first_name, last_name, avatar_url } = req.body;
+  const {
+    first_name,
+    last_name,
+    phone_number,
+    avatar_url,
+    address,
+    birth_date,
+  } = req.body;
 
   const connection = await conn.getConnection();
 
@@ -67,34 +73,28 @@ const updateMyProfile = async (req, res) => {
       connection,
     );
 
-    let profileId;
-
     if (!existingProfile) {
-      // หากยังไม่มี Profile -> สร้างขึ้นใหม่พร้อม Generate Prefix ID (เช่น prof_0001)
-      profileId = await generateSequentialId(
-        connection,
-        "prof",
-        "profile_id",
-        "profiles",
-        4,
-      );
-
+      // หากยังไม่มี Profile -> สร้างขึ้นใหม่โดยใช้ user_id
       const newProfile = {
-        profile_id: profileId,
         user_id: userId,
         first_name: first_name || null,
         last_name: last_name || null,
+        phone_number: phone_number || null,
         avatar_url: avatar_url || null,
+        address: address || null,
+        birth_date: birth_date || null,
       };
 
       await profileService.createProfile(newProfile, connection);
     } else {
       // หากมี Profile แล้ว -> อัปเดตข้อมูล
-      profileId = existingProfile.profile_id;
       const updateData = {
         first_name,
         last_name,
+        phone_number,
         avatar_url,
+        address,
+        birth_date,
       };
 
       await profileService.updateProfile(userId, updateData, connection);

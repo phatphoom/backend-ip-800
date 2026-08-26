@@ -4,14 +4,16 @@ const conn = require("../config/db");
 const getProfileByUserId = async (userId) => {
   const sql = `
     SELECT 
-      p.profile_id,
       p.user_id,
       u.username,
       u.email,
       u.role,
       p.first_name,
       p.last_name,
+      p.phone_number,
       p.avatar_url,
+      p.address,
+      p.birth_date,
       p.created_at,
       p.updated_at
     FROM users u
@@ -30,18 +32,27 @@ const findProfileByUserId = async (userId, connection = null) => {
   return rows[0];
 };
 
-// สร้าง Profile ใหม่
+// สร้าง Profile ใหม่ (ใช้ user_id เป็น PK/FK)
 const createProfile = async (profileData, connection = null) => {
   const sql = `
-    INSERT INTO user_profiles (profile_id, user_id, first_name, last_name, avatar_url)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO user_profiles (
+      user_id,
+      first_name,
+      last_name,
+      phone_number,
+      avatar_url,
+      address,
+      birth_date
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
   const params = [
-    profileData.profile_id,
     profileData.user_id,
     profileData.first_name || null,
     profileData.last_name || null,
+    profileData.phone_number || null,
     profileData.avatar_url || null,
+    profileData.address || null,
+    profileData.birth_date || null,
   ];
 
   const db = connection || conn;
@@ -56,14 +67,20 @@ const updateProfile = async (userId, profileData, connection = null) => {
     SET 
       first_name = COALESCE(?, first_name),
       last_name = COALESCE(?, last_name),
+      phone_number = COALESCE(?, phone_number),
       avatar_url = COALESCE(?, avatar_url),
+      address = COALESCE(?, address),
+      birth_date = COALESCE(?, birth_date),
       updated_at = CURRENT_TIMESTAMP
     WHERE user_id = ?
   `;
   const params = [
     profileData.first_name !== undefined ? profileData.first_name : null,
     profileData.last_name !== undefined ? profileData.last_name : null,
+    profileData.phone_number !== undefined ? profileData.phone_number : null,
     profileData.avatar_url !== undefined ? profileData.avatar_url : null,
+    profileData.address !== undefined ? profileData.address : null,
+    profileData.birth_date !== undefined ? profileData.birth_date : null,
     userId,
   ];
 
