@@ -164,14 +164,16 @@
 {
   "success": true,
   "data": {
-    "profile_id": "prof_0001",
     "user_id": "user_0001",
     "username": "johndoe",
     "email": "john@example.com",
     "role": "user",
     "first_name": "Somchai",
     "last_name": "Jaidee",
+    "phone_number": "0812345678",
     "avatar_url": "/uploads/products/1770800000000-123456789.png",
+    "address": "123 Sukhumvit Road, Bangkok",
+    "birth_date": "1995-05-15",
     "created_at": "2026-08-13T14:00:00.000Z",
     "updated_at": "2026-08-13T14:00:00.000Z"
   }
@@ -190,7 +192,10 @@
 {
   "first_name": "Somchai",
   "last_name": "Jaidee",
-  "avatar_url": "/uploads/products/1770800000000-123456789.png"
+  "phone_number": "0812345678",
+  "avatar_url": "/uploads/products/1770800000000-123456789.png",
+  "address": "123 Sukhumvit Road, Bangkok",
+  "birth_date": "1995-05-15"
 }
 ```
 
@@ -200,14 +205,16 @@
   "success": true,
   "message": "Profile updated successfully",
   "data": {
-    "profile_id": "prof_0001",
     "user_id": "user_0001",
     "username": "johndoe",
     "email": "john@example.com",
     "role": "user",
     "first_name": "Somchai",
     "last_name": "Jaidee",
+    "phone_number": "0812345678",
     "avatar_url": "/uploads/products/1770800000000-123456789.png",
+    "address": "123 Sukhumvit Road, Bangkok",
+    "birth_date": "1995-05-15",
     "created_at": "2026-08-13T14:00:00.000Z",
     "updated_at": "2026-08-13T14:30:00.000Z"
   }
@@ -218,6 +225,119 @@
 - **Endpoint:** `GET /api/profile/:user_id`
 - **Authentication:** 🔐 ต้องระบุ Token
 - **Headers:** `Authorization: Bearer <YOUR_JWT_TOKEN>`
+
+---
+
+### 3.5 เปลี่ยนรหัสผ่าน (Change Password)
+- **Endpoint:** `PUT /api/auth/change-password`
+- **Authentication:** 🔐 ต้องเข้าสู่ระบบ (User หรือ Admin)
+- **Headers:** 
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <YOUR_JWT_TOKEN>`
+
+#### Request Body:
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `current_password` | String | ✅ ใช่ | รหัสผ่านปัจจุบัน |
+| `new_password` | String | ✅ ใช่ | รหัสผ่านใหม่ (ต้องมีความยาวอย่างน้อย 6 ตัวอักษร และไม่ซ้ำรหัสเดิม) |
+| `confirm_password` | String | ❌ ไม่จำเป็น | ยืนยันรหัสผ่านใหม่ (หากส่งมาต้องตรงกับ `new_password`) |
+
+```json
+{
+  "current_password": "oldsecret123",
+  "new_password": "newsecret456",
+  "confirm_password": "newsecret456"
+}
+```
+
+#### Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "Password changed successfully"
+}
+```
+
+#### Error Response (400 Bad Request):
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": {
+    "current_password": "Incorrect current password"
+  }
+}
+```
+
+---
+
+### 3.6 รีเซ็ตรหัสผ่าน (Reset / Forgot Password)
+- **Endpoint:** `POST /api/auth/reset-password`
+- **Authentication:** 🌐 ไม่ต้องระบุ (Public สำหรับกรณีลืมรหัสผ่าน)
+- **Headers:** 
+  - `Content-Type: application/json`
+
+#### Request Body:
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `email` | String | ✅ ใช่ | อีเมลที่ต้องการรีเซ็ตรหัสผ่าน |
+| `new_password` | String | ✅ ใช่ | รหัสผ่านใหม่ (ต้องมีความยาวอย่างน้อย 6 ตัวอักษร) |
+| `confirm_password` | String | ❌ ไม่จำเป็น | ยืนยันรหัสผ่านใหม่ (หากส่งมาต้องตรงกับ `new_password`) |
+
+```json
+{
+  "email": "john@example.com",
+  "new_password": "brandnewsecret123",
+  "confirm_password": "brandnewsecret123"
+}
+```
+
+#### Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "Password reset successfully"
+}
+```
+
+#### Error Response (404 Not Found):
+```json
+{
+  "success": false,
+  "message": "No user found with this email",
+  "errors": {
+    "email": "User not found"
+  }
+}
+```
+
+---
+
+### 3.7 ลบบัญชีผู้ใช้ (Delete Account)
+- **Endpoint:** `DELETE /api/auth/account` หรือ `DELETE /api/auth/me`
+- **Authentication:** 🔐 ต้องเข้าสู่ระบบ (User หรือ Admin)
+- **Headers:** 
+  - `Content-Type: application/json` (หากส่ง Body)
+  - `Authorization: Bearer <YOUR_JWT_TOKEN>`
+
+#### Request Body (Optional):
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `password` | String | ❌ ไม่จำเป็น | รหัสผ่านเพื่อยืนยันการลบบัญชี (หากส่งมาจะถูกตรวจสอบก่อนลบ) |
+
+```json
+{
+  "password": "mysecretpassword"
+}
+```
+
+#### Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "Account deleted successfully"
+}
+```
 
 ---
 
@@ -300,16 +420,49 @@
 
 ## 6. ระบบจัดการสินค้า (Products)
 
- Base Path: `/api/product`
+ Base Path: `/api/products`
 
-### 6.1 ดึงรายการสินค้าทั้งหมด (Get All Products)
-- **Endpoint:** `GET /api/product/all`
+### 6.1 ดึงรายการสินค้า / ค้นหาสินค้า & แบ่งหน้า (Get All / Search Products & Pagination)
+- **Endpoint:** `GET /api/products`
 - **Authentication:** ไม่ต้องระบุ (Public)
+- **Query Parameters:**
+  | Parameter | Type | Required | Default | Description |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `search` หรือ `q` | String | ❌ | `""` | คำค้นหา (ค้นหาครอบคลุมหลายคอลัมน์: รหัสสินค้า, ชื่อ, รายละเอียด, หมวดหมู่) |
+  | `page` | Number | ❌ | `1` | หน้าที่ต้องการดึง (เริ่มต้นที่ 1) |
+  | `limit` | Number | ❌ | `10` | จำนวนรายการต่อหน้า |
+  | `category` หรือ `cate_id` | String | ❌ | `""` | กรองตามรหัสหมวดหมู่หรือชื่อหมวดหมู่ |
+
+#### ตัวอย่าง Request:
+- ดึงสินค้าหน้าแรก: `GET /api/products?page=1&limit=10`
+- ค้นหาสินค้า: `GET /api/products?search=adidas` หรือ `GET /api/products?q=keyboard`
+- ค้นหาพร้อมแบ่งหน้า: `GET /api/products?search=gaming&page=1&limit=10`
 
 #### Response (200 OK):
 ```json
 {
   "success": true,
+  "items": [
+    {
+      "prod_id": "prod_0001",
+      "prod_name": "Mechanical Keyboard",
+      "description": "RGB Backlit Gaming Keyboard",
+      "price": "1990.00",
+      "currency": "THB",
+      "cate_id": "cate_0001",
+      "category_name": "Electronics",
+      "image_url": "/uploads/products/1770800000000-123456789.png",
+      "rating_rate": "4.5",
+      "rating_count": 12,
+      "in_stock": 1,
+      "stock_count": 25,
+      "discount_pct": 10
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 10,
+  "totalPages": 1,
   "data": [
     {
       "prod_id": "prod_0001",
@@ -318,14 +471,13 @@
       "price": "1990.00",
       "currency": "THB",
       "cate_id": "cate_0001",
-      "cate_name": "Electronics",
+      "category_name": "Electronics",
       "image_url": "/uploads/products/1770800000000-123456789.png",
       "rating_rate": "4.5",
       "rating_count": 12,
-      "in_stock": true,
+      "in_stock": 1,
       "stock_count": 25,
-      "discount_pct": 10,
-      "created_at": "2026-08-11T10:00:00.000Z"
+      "discount_pct": 10
     }
   ]
 }
@@ -334,7 +486,7 @@
 ---
 
 ### 6.2 ดึงรายละเอียดสินค้าตาม ID (Get Product by ID)
-- **Endpoint:** `GET /api/product/:id`
+- **Endpoint:** `GET /api/products/:id`
 - **Authentication:** ไม่ต้องระบุ (Public)
 - **URL Parameter:** `:id` = รหัสสินค้า (เช่น `prod_0001`)
 
@@ -371,7 +523,7 @@
 ---
 
 ### 6.3 เพิ่มสินค้าใหม่ (Create Product)
-- **Endpoint:** `POST /api/product/add`
+- **Endpoint:** `POST /api/products`
 - **Authentication:** 🔒 ต้องเป็น Admin เท่านั้น (`role: 'admin'`)  
 - **Headers:**  
   - `Content-Type: application/json`  
@@ -433,7 +585,7 @@
 ---
 
 ### 6.4 แก้ไขข้อมูลสินค้า (Update Product)
-- **Endpoint:** `PUT /api/product/edit/:id`
+- **Endpoint:** `PUT /api/products/:id`
 - **Authentication:** 🔒 ต้องเป็น Admin เท่านั้น (`role: 'admin'`)  
 - **Headers:**  
   - `Content-Type: application/json`  
@@ -467,7 +619,7 @@
 ---
 
 ### 6.5 ลบสินค้า (Delete Product)
-- **Endpoint:** `DELETE /api/product/delete/:id`
+- **Endpoint:** `DELETE /api/products/:id`
 - **Authentication:** 🔒 ต้องเป็น Admin เท่านั้น (`role: 'admin'`)  
 - **Headers:**  
   - `Authorization: Bearer <admin_jwt_token>`
@@ -568,16 +720,16 @@ export const getFullImageUrl = (relativePath) => {
 
 | Case # | Endpoint | Method | Token ที่ใช้ | ผลลัพธ์ที่คาดหวัง (Expected Status & Response) |
 | :---: | :--- | :---: | :--- | :--- |
-| **1** | `/api/product/add` | `POST` | ❌ ไม่ใส่ Token | `401 Unauthorized`<br>`{ "success": false, "message": "Access token is required" }` |
-| **2** | `/api/product/add` | `POST` | 👤 User Token | `403 Forbidden`<br>`{ "success": false, "message": "Access denied: Insufficient permissions" }` |
-| **3** | `/api/product/add` | `POST` | 👑 Admin Token | `201 Created`<br>`{ "success": true, "message": "Product created successfully", ... }` |
+| **1** | `/api/products` | `POST` | ❌ ไม่ใส่ Token | `401 Unauthorized`<br>`{ "success": false, "message": "Access token is required" }` |
+| **2** | `/api/products` | `POST` | 👤 User Token | `403 Forbidden`<br>`{ "success": false, "message": "Access denied: Insufficient permissions" }` |
+| **3** | `/api/products` | `POST` | 👑 Admin Token | `201 Created`<br>`{ "success": true, "message": "Product created successfully", ... }` |
 | **4** | `/api/upload` | `POST` | ❌ ไม่ใส่ Token | `401 Unauthorized`<br>`{ "success": false, "message": "Access token is required" }` |
 | **5** | `/api/upload` | `POST` | 👤 User Token | `200 OK`<br>`{ "success": true, "message": "อัปโหลดรูปภาพสำเร็จ (Base64)", ... }` |
 | **6** | `/api/upload` | `POST` | 👑 Admin Token | `200 OK`<br>`{ "success": true, "message": "อัปโหลดรูปภาพสำเร็จ (Base64)", ... }` |
-| **7** | `/api/product/edit/:id` | `PUT` | 👤 User Token | `403 Forbidden`<br>`{ "success": false, "message": "Access denied: Insufficient permissions" }` |
-| **8** | `/api/product/edit/:id` | `PUT` | 👑 Admin Token | `200 OK`<br>`{ "success": true, "message": "Product updated successfully", ... }` |
-| **9** | `/api/product/delete/:id`| `DELETE` | 👤 User Token | `403 Forbidden`<br>`{ "success": false, "message": "Access denied: Insufficient permissions" }` |
-| **10**| `/api/product/delete/:id`| `DELETE` | 👑 Admin Token | `200 OK`<br>`{ "success": true, "message": "Product deleted successfully" }` |
+| **7** | `/api/products/:id` | `PUT` | 👤 User Token | `403 Forbidden`<br>`{ "success": false, "message": "Access denied: Insufficient permissions" }` |
+| **8** | `/api/products/:id` | `PUT` | 👑 Admin Token | `200 OK`<br>`{ "success": true, "message": "Product updated successfully", ... }` |
+| **9** | `/api/products/:id`| `DELETE` | 👤 User Token | `403 Forbidden`<br>`{ "success": false, "message": "Access denied: Insufficient permissions" }` |
+| **10**| `/api/products/:id`| `DELETE` | 👑 Admin Token | `200 OK`<br>`{ "success": true, "message": "Product deleted successfully" }` |
 
 ---
 
@@ -598,7 +750,7 @@ curl -X POST http://localhost:3000/api/upload \
 #### 2. เพิ่มสินค้า (Admin Only)
 **cURL:**
 ```bash
-curl -X POST http://localhost:3000/api/product/add \
+curl -X POST http://localhost:3000/api/products \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <ADMIN_TOKEN>" \
   -d '{
