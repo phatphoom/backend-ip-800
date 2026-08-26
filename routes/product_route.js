@@ -20,15 +20,20 @@ const authorizeRoles = authMiddleware.authorizeRoles || function (...allowedRole
   };
 };
 
-router.get("/all/", ProductController.getProducts);
+// Get products with search & pagination (supports ?search=..., ?q=..., ?page=..., ?limit=..., ?category=...)
+router.get("/", ProductController.getProducts);
 
+// Get single product by ID
 router.get("/:id", ProductController.getProduct);
 
-router.post("/add", verifyToken, authorizeRoles("admin"), ProductController.createProduct);
+// Create product (Admin only)
+router.post("/", verifyToken, authorizeRoles("admin"), ProductController.createProduct);
 
-router.put("/edit/:id", verifyToken, authorizeRoles("admin"), ProductController.updateProduct);
+// Update product (Admin only)
+router.put("/:id", verifyToken, authorizeRoles("admin"), ProductController.updateProduct);
 
-router.delete("/delete/:id", verifyToken, authorizeRoles("admin"), ProductController.deleteProduct);
+// Delete product (Admin only)
+router.delete("/:id", verifyToken, authorizeRoles("admin"), ProductController.deleteProduct);
 
 module.exports = router;
 

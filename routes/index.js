@@ -9,7 +9,7 @@ const AuthRouter = require("./auth");
 const UploadRouter = require("./upload_route");
 const ProfileRouter = require("./profile_route");
 
-router.use("/api/product", Productrouter);
+router.use("/api/products", Productrouter);
 router.use("/api/auth", AuthRouter);
 router.use("/api/upload", UploadRouter);
 router.use("/api/profile", ProfileRouter);

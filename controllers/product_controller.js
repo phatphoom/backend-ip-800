@@ -4,11 +4,33 @@ const { generateSequentialId } = require("../utils/generateId");
 
 const getProducts = async (req, res) => {
   try {
-    const products = await productService.getAllProduct();
+    const {
+      search,
+      q,
+      page = 1,
+      limit = 10,
+      category,
+      cate_id,
+    } = req.query;
+
+    const searchTerm = search !== undefined ? search : (q !== undefined ? q : "");
+    const categoryFilter = category !== undefined ? category : (cate_id !== undefined ? cate_id : "");
+
+    const result = await productService.getAllProduct({
+      search: searchTerm,
+      page: parseInt(page, 10) || 1,
+      limit: parseInt(limit, 10) || 10,
+      category: categoryFilter,
+    });
 
     return res.status(200).json({
       success: true,
-      data: products,
+      items: result.items,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages,
+      data: result.items,
     });
   } catch (err) {
     return res.status(500).json({

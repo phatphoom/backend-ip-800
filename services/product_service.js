@@ -1,27 +1,83 @@
 const conn = require("../config/db");
 
-const getAllProduct = async () => {
-  const sql = `
-      SELECT 
-        p.prod_id,
-        p.prod_name,
-        p.description,
-        p.price,
-        p.currency,
-        c.cate_name AS category_name,      
-        p.image_url,
-        p.rating_rate,
-        p.rating_count,
-        p.in_stock,
-        p.stock_count,
-        p.discount_pct
+const getAllProduct = async (options = {}) => {
+  const {
+    search = "",
+    page = 1,
+    limit = 10,
+    category = "",
+  } = options;
+
+  let whereClauses = [];
+  let params = [];
+
+  const trimmedSearch = typeof search === "string" ? search.trim() : "";
+  if (trimmedSearch) {
+    whereClauses.push(`(
+      p.prod_id LIKE ? OR
+      p.prod_name LIKE ? OR
+      p.description LIKE ? OR
+      c.cate_name LIKE ?
+    )`);
+    const searchPattern = `%${trimmedSearch}%`;
+    params.push(searchPattern, searchPattern, searchPattern, searchPattern);
+  }
+
+  const trimmedCategory = typeof category === "string" ? category.trim() : "";
+  if (trimmedCategory) {
+    whereClauses.push(`(p.cate_id = ? OR c.cate_name LIKE ?)`);
+    params.push(trimmedCategory, `%${trimmedCategory}%`);
+  }
+
+  const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+
+  // 1. Get total count
+  const countSql = `
+    SELECT COUNT(*) AS total
     FROM products p
     INNER JOIN categories c ON p.cate_id = c.cate_id
-    ORDER BY p.prod_id;
+    ${whereSql}
+  `;
+  const [countRows] = await conn.execute(countSql, params);
+  const total = countRows[0] ? Number(countRows[0].total) : 0;
+
+  // 2. Pagination calculation
+  const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+  const parsedLimit = Math.max(1, parseInt(limit, 10) || 10);
+  const offset = (parsedPage - 1) * parsedLimit;
+
+  // 3. Get paginated items
+  const dataSql = `
+    SELECT 
+      p.prod_id,
+      p.prod_name,
+      p.description,
+      p.price,
+      p.currency,
+      p.cate_id,
+      c.cate_name AS category_name,      
+      p.image_url,
+      p.rating_rate,
+      p.rating_count,
+      p.in_stock,
+      p.stock_count,
+      p.discount_pct
+    FROM products p
+    INNER JOIN categories c ON p.cate_id = c.cate_id
+    ${whereSql}
+    ORDER BY p.prod_id ASC
+    LIMIT ? OFFSET ?
   `;
 
-  const [rows] = await conn.execute(sql);
-  return rows;
+  const [rows] = await conn.query(dataSql, [...params, parsedLimit, offset]);
+
+  return {
+    items: rows,
+    total,
+    page: parsedPage,
+    limit: parsedLimit,
+    totalPages: Math.ceil(total / parsedLimit) || 1,
+  };
 };
 
 const getEachProduct = async (id) => {
@@ -127,6 +183,7 @@ const deleteProduct = async (id) => {
 
 module.exports = {
   getAllProduct,
+  getProducts: getAllProduct,
   getEachProduct,
   addProduct,
   updateProduct,
