@@ -1,7 +1,7 @@
 const conn = require("../config/db");
 
 // ดึงข้อมูล Profile ตาม user_id (พร้อมข้อมูล username, email จากตาราง users)
-const getProfileByUserId = async (userId) => {
+const getProfileByUserId = async (userId, connection = null) => {
   const sql = `
     SELECT 
       p.user_id,
@@ -20,8 +20,9 @@ const getProfileByUserId = async (userId) => {
     LEFT JOIN user_profiles p ON u.user_id = p.user_id
     WHERE u.user_id = ?
   `;
-  const [rows] = await conn.execute(sql, [userId]);
-  return rows[0];
+  const db = connection || conn;
+  const [rows] = await db.execute(sql, [userId]);
+  return rows[0] || null;
 };
 
 // ตรวจสอบว่า user มี profile หรือยัง
@@ -29,7 +30,7 @@ const findProfileByUserId = async (userId, connection = null) => {
   const sql = `SELECT * FROM user_profiles WHERE user_id = ?`;
   const db = connection || conn;
   const [rows] = await db.execute(sql, [userId]);
-  return rows[0];
+  return rows[0] || null;
 };
 
 // สร้าง Profile ใหม่ (ใช้ user_id เป็น PK/FK)
@@ -89,9 +90,61 @@ const updateProfile = async (userId, profileData, connection = null) => {
   return result;
 };
 
+/**
+ * จัดการสร้างหรืออัปเดต Profile (Upsert) ภายใน Database Transaction
+ */
+const upsertProfile = async (userId, profileData) => {
+  const connection = await conn.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const existingProfile = await findProfileByUserId(userId, connection);
+
+    if (!existingProfile) {
+      const newProfile = {
+        user_id: userId,
+        first_name: profileData.first_name || null,
+        last_name: profileData.last_name || null,
+        phone_number: profileData.phone_number || null,
+        avatar_url: profileData.avatar_url || null,
+        address: profileData.address || null,
+        birth_date: profileData.birth_date || null,
+      };
+
+      await createProfile(newProfile, connection);
+    } else {
+      const updateData = {
+        first_name: profileData.first_name,
+        last_name: profileData.last_name,
+        phone_number: profileData.phone_number,
+        avatar_url: profileData.avatar_url,
+        address: profileData.address,
+        birth_date: profileData.birth_date,
+      };
+
+      await updateProfile(userId, updateData, connection);
+    }
+
+    await connection.commit();
+
+    const updatedProfile = await getProfileByUserId(userId);
+    return {
+      isCreated: !existingProfile,
+      profile: updatedProfile,
+    };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
   getProfileByUserId,
   findProfileByUserId,
   createProfile,
   updateProfile,
+  upsertProfile,
 };

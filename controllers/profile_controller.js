@@ -1,4 +1,3 @@
-const conn = require("../config/db");
 const profileService = require("../services/profile_service");
 
 // ดึงข้อมูล Profile ของตนเองที่เข้าสู่ระบบอยู่
@@ -63,63 +62,28 @@ const updateMyProfile = async (req, res) => {
     birth_date,
   } = req.body;
 
-  const connection = await conn.getConnection();
-
   try {
-    await connection.beginTransaction();
-
-    const existingProfile = await profileService.findProfileByUserId(
-      userId,
-      connection,
-    );
-
-    if (!existingProfile) {
-      // หากยังไม่มี Profile -> สร้างขึ้นใหม่โดยใช้ user_id
-      const newProfile = {
-        user_id: userId,
-        first_name: first_name || null,
-        last_name: last_name || null,
-        phone_number: phone_number || null,
-        avatar_url: avatar_url || null,
-        address: address || null,
-        birth_date: birth_date || null,
-      };
-
-      await profileService.createProfile(newProfile, connection);
-    } else {
-      // หากมี Profile แล้ว -> อัปเดตข้อมูล
-      const updateData = {
-        first_name,
-        last_name,
-        phone_number,
-        avatar_url,
-        address,
-        birth_date,
-      };
-
-      await profileService.updateProfile(userId, updateData, connection);
-    }
-
-    await connection.commit();
-
-    // ดึงข้อมูลล่าสุดกลับไปแสดงผล
-    const updatedProfile = await profileService.getProfileByUserId(userId);
+    const result = await profileService.upsertProfile(userId, {
+      first_name,
+      last_name,
+      phone_number,
+      avatar_url,
+      address,
+      birth_date,
+    });
 
     return res.status(200).json({
       success: true,
-      message: existingProfile
-        ? "Profile updated successfully"
-        : "Profile created successfully",
-      data: updatedProfile,
+      message: result.isCreated
+        ? "Profile created successfully"
+        : "Profile updated successfully",
+      data: result.profile,
     });
   } catch (err) {
-    await connection.rollback();
     return res.status(500).json({
       success: false,
       message: err.message,
     });
-  } finally {
-    connection.release();
   }
 };
 

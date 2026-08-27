@@ -1,6 +1,4 @@
-const conn = require("../config/db");
 const productService = require("../services/product_service");
-const { generateSequentialId } = require("../utils/generateId");
 
 const getProducts = async (req, res) => {
   try {
@@ -101,39 +99,20 @@ const createProduct = async (req, res) => {
     });
   }
 
-  const connection = await conn.getConnection(); // ดึง connection จาก pool
-
   try {
-    await connection.beginTransaction(); // เริ่ม transaction
-
-    // SELECT FOR UPDATE — lock ค้างอยู่ใน transaction เดียวกัน
-    const prod_id = await generateSequentialId(
-      connection,
-      "prod",
-      "prod_id",
-      "products",
-      4,
-    );
-
-    const newProduct = {
-      prod_id,
+    const newProduct = await productService.createProduct({
       prod_name,
-      description: description || null,
-      price: Number(price),
-      currency: currency || "THB",
+      description,
+      price,
+      currency,
       cate_id,
-      image_url: image_url || null,
-      rating_rate: rating_rate !== undefined ? Number(rating_rate) : 0,
-      rating_count: rating_count !== undefined ? Number(rating_count) : 0,
-      in_stock: in_stock !== undefined ? Boolean(in_stock) : true,
-      stock_count: stock_count !== undefined ? Number(stock_count) : 0,
-      discount_pct: discount_pct !== undefined ? Number(discount_pct) : 0,
-    };
-
-    // INSERT — ยังอยู่ใน transaction เดียวกัน (lock ยังค้างอยู่)
-    await productService.addProduct(newProduct, connection);
-
-    await connection.commit(); // ปิด transaction — lock ถูกปลดตรงนี้
+      image_url,
+      rating_rate,
+      rating_count,
+      in_stock,
+      stock_count,
+      discount_pct,
+    });
 
     return res.status(201).json({
       success: true,
@@ -141,13 +120,10 @@ const createProduct = async (req, res) => {
       data: { newProduct },
     });
   } catch (err) {
-    await connection.rollback(); // ถ้า error ให้ rollback กลับ
     return res.status(500).json({
       success: false,
       message: err.message,
     });
-  } finally {
-    connection.release(); // คืน connection กลับ pool เสมอ
   }
 };
 
@@ -177,14 +153,16 @@ const updateProduct = async (req, res) => {
       });
     }
 
-    const product = await productService.updateProduct(updateData, id);
-
-    if (product.affectedRows === 0) {
+    // ตรวจสอบว่ามีสินค้านี้อยู่จริงหรือไม่
+    const existingProduct = await productService.getEachProduct(id);
+    if (!existingProduct) {
       return res.status(404).json({
         success: false,
         message: "Product not found",
       });
     }
+
+    await productService.updateProduct(updateData, id);
 
     return res.status(200).json({
       success: true,
@@ -210,14 +188,15 @@ const deleteProduct = async (req, res) => {
       });
     }
 
-    const result = await productService.deleteProduct(id);
-
-    if (result.affectedRows === 0) {
+    const existingProduct = await productService.getEachProduct(id);
+    if (!existingProduct) {
       return res.status(404).json({
         success: false,
         message: "Product not found",
       });
     }
+
+    await productService.deleteProduct(id);
 
     return res.status(200).json({
       success: true,

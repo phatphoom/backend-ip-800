@@ -1,4 +1,5 @@
 const conn = require("../config/db");
+const { generateSequentialId } = require("../utils/generateId");
 
 const getAllProduct = async (options = {}) => {
   const {
@@ -88,6 +89,7 @@ const getEachProduct = async (id) => {
         p.description,
         p.price,
         p.currency,
+        p.cate_id,
         c.cate_name AS category_name,      
         p.image_url,
         p.rating_rate,
@@ -101,7 +103,72 @@ const getEachProduct = async (id) => {
   `;
 
   const [rows] = await conn.execute(sql, [id]);
-  return rows[0];
+  return rows[0] || null;
+};
+
+const createProduct = async (productData) => {
+  const connection = await conn.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const prod_id = await generateSequentialId(
+      connection,
+      "prod",
+      "prod_id",
+      "products",
+      4,
+    );
+
+    const newProduct = {
+      prod_id,
+      prod_name: productData.prod_name,
+      description: productData.description || null,
+      price: Number(productData.price),
+      currency: productData.currency || "THB",
+      cate_id: productData.cate_id,
+      image_url: productData.image_url || null,
+      rating_rate: productData.rating_rate !== undefined ? Number(productData.rating_rate) : 0,
+      rating_count: productData.rating_count !== undefined ? Number(productData.rating_count) : 0,
+      in_stock: productData.in_stock !== undefined ? Boolean(productData.in_stock) : true,
+      stock_count: productData.stock_count !== undefined ? Number(productData.stock_count) : 0,
+      discount_pct: productData.discount_pct !== undefined ? Number(productData.discount_pct) : 0,
+    };
+
+    const sql = `
+      INSERT INTO products (
+          prod_id, prod_name, description, price, currency, 
+          cate_id, image_url, rating_rate, rating_count, 
+          in_stock, stock_count, discount_pct
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+      newProduct.prod_id,
+      newProduct.prod_name,
+      newProduct.description,
+      newProduct.price,
+      newProduct.currency,
+      newProduct.cate_id,
+      newProduct.image_url,
+      newProduct.rating_rate,
+      newProduct.rating_count,
+      newProduct.in_stock,
+      newProduct.stock_count,
+      newProduct.discount_pct,
+    ];
+
+    await connection.execute(sql, params);
+
+    await connection.commit();
+
+    return newProduct;
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 };
 
 const addProduct = async (product, connection = null) => {
@@ -128,7 +195,6 @@ const addProduct = async (product, connection = null) => {
     product.discount_pct,
   ];
 
-  // ใช้ connection ที่ส่งมา (อยู่ใน transaction) หรือ pool ถ้าไม่ได้ส่งมา
   const db = connection || conn;
   const [insertResult] = await db.execute(sql, params);
 
@@ -185,6 +251,7 @@ module.exports = {
   getAllProduct,
   getProducts: getAllProduct,
   getEachProduct,
+  createProduct,
   addProduct,
   updateProduct,
   deleteProduct,

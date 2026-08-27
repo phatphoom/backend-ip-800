@@ -1,9 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const conn = require("../config/db");
 const authService = require("../services/auth_service");
-const profileService = require("../services/profile_service");
-const { generateSequentialId } = require("../utils/generateId");
 
 const register = async (req, res) => {
   const { username, email, password } = req.body;
@@ -27,69 +24,25 @@ const register = async (req, res) => {
     });
   }
 
-  const connection = await conn.getConnection();
-
   try {
-    await connection.beginTransaction();
-
-    const existingUser = await authService.findUserByEmail(email);
-    if (existingUser) {
-      connection.release();
-      return res.status(400).json({
-        success: false,
-        message: "Email is already registered",
-        errors: { email: "Email is already in use" },
-      });
-    }
-
-    const userId = await generateSequentialId(
-      connection,
-      "user",
-      "user_id",
-      "users",
-      4,
-    );
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const newUser = {
-      user_id: userId,
-      username,
-      email,
-      password: hashedPassword,
-      role: "user",
-    };
-
-    await authService.createUser(newUser, connection);
-
-    // Auto-create blank user_profile for true 1:1 relationship
-    await profileService.createProfile(
-      {
-        user_id: userId,
-      },
-      connection,
-    );
-
-    await connection.commit();
+    const createdUser = await authService.registerUser({
+      username: username.trim(),
+      email: email.trim(),
+      password,
+    });
 
     return res.status(201).json({
       success: true,
       message: "User registered successfully",
-      data: {
-        user_id: newUser.user_id,
-        username: newUser.username,
-        email: newUser.email,
-      },
+      data: createdUser,
     });
   } catch (err) {
-    await connection.rollback();
-    return res.status(500).json({
+    const status = err.statusCode || 500;
+    return res.status(status).json({
       success: false,
       message: err.message,
+      ...(err.errors ? { errors: err.errors } : {}),
     });
-  } finally {
-    connection.release();
   }
 };
 
@@ -113,7 +66,7 @@ const login = async (req, res) => {
   }
 
   try {
-    const user = await authService.findUserByEmail(email);
+    const user = await authService.findUserByEmail(email.trim());
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -302,50 +255,20 @@ const deleteAccount = async (req, res) => {
   const userId = req.user.user_id;
   const { password } = req.body || {};
 
-  const connection = await conn.getConnection();
-
   try {
-    await connection.beginTransaction();
-
-    const user = await authService.findUserWithPasswordById(userId);
-    if (!user) {
-      connection.release();
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // หากผู้ใช้ส่ง password มา ให้ตรวจสอบความถูกต้องเพื่อความปลอดภัยก่อนลบ
-    if (password) {
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        connection.release();
-        return res.status(400).json({
-          success: false,
-          message: "Incorrect password for account deletion",
-          errors: {
-            password: "Password is incorrect",
-          },
-        });
-      }
-    }
-
-    await authService.deleteUser(userId, connection);
-    await connection.commit();
+    await authService.deleteUserAccount(userId, password);
 
     return res.status(200).json({
       success: true,
       message: "Account deleted successfully",
     });
   } catch (err) {
-    await connection.rollback();
-    return res.status(500).json({
+    const status = err.statusCode || 500;
+    return res.status(status).json({
       success: false,
       message: err.message,
+      ...(err.errors ? { errors: err.errors } : {}),
     });
-  } finally {
-    connection.release();
   }
 };
 

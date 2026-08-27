@@ -1,22 +1,26 @@
 const express = require("express");
 const router = express.Router();
 
-const Productrouter = require("./product_route");
-const HealthRouter = require("./health");
-const WelcomeRouter = require("./welcome");
-const CategoryRouter = require("./categories");
-const AuthRouter = require("./auth");
-const UploadRouter = require("./upload_route");
-const ProfileRouter = require("./profile_route");
+const productRoute = require("./product_route");
+const authRoute = require("./auth");
+const uploadRoute = require("./upload_route");
+const profileRoute = require("./profile_route");
+const categoryRoute = require("./categories");
+const healthRoute = require("./health");
+const welcomeRoute = require("./welcome");
 
-router.use("/api/products", Productrouter);
-router.use("/api/auth", AuthRouter);
-router.use("/api/upload", UploadRouter);
-router.use("/api/profile", ProfileRouter);
+// API Endpoints
+router.use("/api/products", productRoute);
+router.use("/api/auth", authRoute);
+router.use("/api/upload", uploadRoute);
+router.use("/api/profile", profileRoute);
 
-router.use("/", WelcomeRouter);
-router.use("/api", CategoryRouter);
-router.use("/health", HealthRouter);
+// Support both /api/categories and /api/category for backwards compatibility
+router.use("/api/categories", categoryRoute);
+router.use("/api/category", categoryRoute);
 
+// System & Health Endpoints
+router.use("/health", healthRoute);
+router.use("/", welcomeRoute);
 
 module.exports = router;
