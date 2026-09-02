@@ -1,5 +1,6 @@
 const conn = require("../config/db");
 const { generateSequentialId } = require("../utils/generateId");
+const { getFormattedDateTime } = require("../utils/formatDate");
 
 /**
  * ดึงรายการหมวดหมู่สินค้าทั้งหมด พร้อมจำนวนสินค้าในแต่ละหมวดหมู่
@@ -48,7 +49,7 @@ const createCategory = async (categoryData) => {
       "cate",
       "cate_id",
       "categories",
-      4
+      3
     );
 
     const newCategory = {
@@ -94,14 +95,15 @@ const updateCategory = async (fields, id) => {
 
   const setClause = keysToUpdate.map((key) => `${key} = ?`).join(", ");
   const values = keysToUpdate.map((key) => fields[key]);
+  const updatedAt = getFormattedDateTime();
 
   const sql = `
     UPDATE categories 
-    SET ${setClause} 
+    SET ${setClause}, updated_at = ? 
     WHERE cate_id = ? AND deleted_at IS NULL
   `;
 
-  const [updateResult] = await conn.execute(sql, [...values, id]);
+  const [updateResult] = await conn.execute(sql, [...values, updatedAt, id]);
   return updateResult;
 };
 
@@ -109,12 +111,13 @@ const updateCategory = async (fields, id) => {
  * ลบหมวดหมู่ (Soft Delete)
  */
 const deleteCategory = async (id) => {
+  const deletedAt = getFormattedDateTime();
   const sql = `
     UPDATE categories 
-    SET deleted_at = CURRENT_TIMESTAMP 
+    SET deleted_at = ? 
     WHERE cate_id = ? AND deleted_at IS NULL
   `;
-  const [result] = await conn.execute(sql, [id]);
+  const [result] = await conn.execute(sql, [deletedAt, id]);
   return result;
 };
 

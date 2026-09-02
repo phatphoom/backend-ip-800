@@ -1,5 +1,6 @@
 const conn = require("../config/db");
 const { generateSequentialId } = require("../utils/generateId");
+const { getFormattedDateTime } = require("../utils/formatDate");
 
 const getAllProduct = async (options = {}) => {
   const {
@@ -212,25 +213,27 @@ const updateProduct = async (fields, id) => {
 
   const setClause = keysToUpdate.map((key) => `${key} = ?`).join(", ");
   const values = keysToUpdate.map((key) => fields[key]);
+  const updatedAt = getFormattedDateTime();
 
   const sql = `
     UPDATE products 
-    SET ${setClause} 
+    SET ${setClause}, updated_at = ? 
     WHERE prod_id = ? AND deleted_at IS NULL
   `;
 
-  const [updateResult] = await conn.execute(sql, [...values, id]);
+  const [updateResult] = await conn.execute(sql, [...values, updatedAt, id]);
 
   return updateResult;
 };
 
 const deleteProduct = async (id) => {
+  const deletedAt = getFormattedDateTime();
   const sql = `
     UPDATE products 
-    SET deleted_at = CURRENT_TIMESTAMP 
+    SET deleted_at = ? 
     WHERE prod_id = ? AND deleted_at IS NULL
   `;
-  const [result] = await conn.execute(sql, [id]);
+  const [result] = await conn.execute(sql, [deletedAt, id]);
   return result;
 };
 
