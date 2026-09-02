@@ -9,7 +9,7 @@ const getAllProduct = async (options = {}) => {
     category = "",
   } = options;
 
-  let whereClauses = [];
+  let whereClauses = ["p.deleted_at IS NULL"];
   let params = [];
 
   const trimmedSearch = typeof search === "string" ? search.trim() : "";
@@ -58,8 +58,6 @@ const getAllProduct = async (options = {}) => {
       p.cate_id,
       c.cate_name AS category_name,      
       p.image_url,
-      p.rating_rate,
-      p.rating_count,
       p.in_stock,
       p.stock_count,
       p.discount_pct
@@ -92,14 +90,12 @@ const getEachProduct = async (id) => {
         p.cate_id,
         c.cate_name AS category_name,      
         p.image_url,
-        p.rating_rate,
-        p.rating_count,
         p.in_stock,
         p.stock_count,
         p.discount_pct
     FROM products p
     INNER JOIN categories c ON p.cate_id = c.cate_id
-    WHERE p.prod_id = ?
+    WHERE p.prod_id = ? AND p.deleted_at IS NULL
   `;
 
   const [rows] = await conn.execute(sql, [id]);
@@ -128,8 +124,6 @@ const createProduct = async (productData) => {
       currency: productData.currency || "THB",
       cate_id: productData.cate_id,
       image_url: productData.image_url || null,
-      rating_rate: productData.rating_rate !== undefined ? Number(productData.rating_rate) : 0,
-      rating_count: productData.rating_count !== undefined ? Number(productData.rating_count) : 0,
       in_stock: productData.in_stock !== undefined ? Boolean(productData.in_stock) : true,
       stock_count: productData.stock_count !== undefined ? Number(productData.stock_count) : 0,
       discount_pct: productData.discount_pct !== undefined ? Number(productData.discount_pct) : 0,
@@ -138,9 +132,8 @@ const createProduct = async (productData) => {
     const sql = `
       INSERT INTO products (
           prod_id, prod_name, description, price, currency, 
-          cate_id, image_url, rating_rate, rating_count, 
-          in_stock, stock_count, discount_pct
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          cate_id, image_url, in_stock, stock_count, discount_pct
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -151,8 +144,6 @@ const createProduct = async (productData) => {
       newProduct.currency,
       newProduct.cate_id,
       newProduct.image_url,
-      newProduct.rating_rate,
-      newProduct.rating_count,
       newProduct.in_stock,
       newProduct.stock_count,
       newProduct.discount_pct,
@@ -175,9 +166,8 @@ const addProduct = async (product, connection = null) => {
   const sql = `
     INSERT INTO products (
         prod_id, prod_name, description, price, currency, 
-        cate_id, image_url, rating_rate, rating_count, 
-        in_stock, stock_count, discount_pct
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        cate_id, image_url, in_stock, stock_count, discount_pct
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const params = [
@@ -188,8 +178,6 @@ const addProduct = async (product, connection = null) => {
     product.currency,
     product.cate_id,
     product.image_url,
-    product.rating_rate,
-    product.rating_count,
     product.in_stock,
     product.stock_count,
     product.discount_pct,
@@ -209,8 +197,6 @@ const updateProduct = async (fields, id) => {
     "currency",
     "cate_id",
     "image_url",
-    "rating_rate",
-    "rating_count",
     "in_stock",
     "stock_count",
     "discount_pct",
@@ -230,7 +216,7 @@ const updateProduct = async (fields, id) => {
   const sql = `
     UPDATE products 
     SET ${setClause} 
-    WHERE prod_id = ?  
+    WHERE prod_id = ? AND deleted_at IS NULL
   `;
 
   const [updateResult] = await conn.execute(sql, [...values, id]);
@@ -240,8 +226,9 @@ const updateProduct = async (fields, id) => {
 
 const deleteProduct = async (id) => {
   const sql = `
-    DELETE FROM products 
-    WHERE prod_id = ?  
+    UPDATE products 
+    SET deleted_at = CURRENT_TIMESTAMP 
+    WHERE prod_id = ? AND deleted_at IS NULL
   `;
   const [result] = await conn.execute(sql, [id]);
   return result;
