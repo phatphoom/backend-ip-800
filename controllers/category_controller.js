@@ -47,11 +47,6 @@ const getCategoryById = async (req, res) => {
   }
 };
 
-module.exports = {
-  getCategories,
-  getCategoryById,
-};
-
 /**
  * POST /api/categories
  * เพิ่มหมวดหมู่สินค้าใหม่ (Admin only)
