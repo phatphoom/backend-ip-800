@@ -115,7 +115,7 @@ sequenceDiagram
     UploadController-->>Client: 200 OK (returns image_url: "/uploads/products/xxx.png")
 
     Note over Client, MySQL: Step 2: Update Profile with Image URL
-    Client->>ProfileController: PUT /api/profile/me (avatar_url, first_name, last_name, phone_number, address, birth_date)
+    Client->>ProfileController: PUT /api/profile/me (avatar_url, first_name, last_name, phone_number, address)
     ProfileController->>MySQL: Begin Transaction & Upsert/Update user_profiles by user_id
     MySQL-->>ProfileController: Commit Success
     ProfileController-->>Client: 200 OK (Updated Profile Object)

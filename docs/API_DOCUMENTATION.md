@@ -173,7 +173,6 @@
       "phone_number": "0812345678",
       "avatar_url": "/uploads/products/1770800000000-123456789.png",
       "address": "123 Sukhumvit Road, Bangkok",
-      "birth_date": "1995-05-15",
       "created_at": "2026-08-13T14:00:00.000Z",
       "updated_at": "2026-08-13T14:00:00.000Z"
     }
@@ -194,8 +193,7 @@
     "last_name": "Jaidee",
     "phone_number": "0812345678",
     "avatar_url": "/uploads/products/1770800000000-123456789.png",
-    "address": "123 Sukhumvit Road, Bangkok",
-    "birth_date": "1995-05-15"
+    "address": "123 Sukhumvit Road, Bangkok"
   }
   ```
 
@@ -214,7 +212,6 @@
       "phone_number": "0812345678",
       "avatar_url": "/uploads/products/1770800000000-123456789.png",
       "address": "123 Sukhumvit Road, Bangkok",
-      "birth_date": "1995-05-15",
       "created_at": "2026-08-13T14:00:00.000Z",
       "updated_at": "2026-08-13T14:30:00.000Z"
     }

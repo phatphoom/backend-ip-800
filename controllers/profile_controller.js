@@ -59,7 +59,6 @@ const updateMyProfile = async (req, res) => {
     phone_number,
     avatar_url,
     address,
-    birth_date,
   } = req.body;
 
   try {
@@ -69,7 +68,6 @@ const updateMyProfile = async (req, res) => {
       phone_number,
       avatar_url,
       address,
-      birth_date,
     });
 
     return res.status(200).json({

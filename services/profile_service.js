@@ -13,7 +13,6 @@ const getProfileByUserId = async (userId, connection = null) => {
       p.phone_number,
       p.avatar_url,
       p.address,
-      p.birth_date,
       p.created_at,
       p.updated_at
     FROM users u
@@ -42,9 +41,8 @@ const createProfile = async (profileData, connection = null) => {
       last_name,
       phone_number,
       avatar_url,
-      address,
-      birth_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      address
+    ) VALUES (?, ?, ?, ?, ?, ?)
   `;
   const params = [
     profileData.user_id,
@@ -53,7 +51,6 @@ const createProfile = async (profileData, connection = null) => {
     profileData.phone_number || null,
     profileData.avatar_url || null,
     profileData.address || null,
-    profileData.birth_date || null,
   ];
 
   const db = connection || conn;
@@ -71,7 +68,6 @@ const updateProfile = async (userId, profileData, connection = null) => {
       phone_number = COALESCE(?, phone_number),
       avatar_url = COALESCE(?, avatar_url),
       address = COALESCE(?, address),
-      birth_date = COALESCE(?, birth_date),
       updated_at = CURRENT_TIMESTAMP
     WHERE user_id = ?
   `;
@@ -81,7 +77,6 @@ const updateProfile = async (userId, profileData, connection = null) => {
     profileData.phone_number !== undefined ? profileData.phone_number : null,
     profileData.avatar_url !== undefined ? profileData.avatar_url : null,
     profileData.address !== undefined ? profileData.address : null,
-    profileData.birth_date !== undefined ? profileData.birth_date : null,
     userId,
   ];
 
@@ -109,7 +104,6 @@ const upsertProfile = async (userId, profileData) => {
         phone_number: profileData.phone_number || null,
         avatar_url: profileData.avatar_url || null,
         address: profileData.address || null,
-        birth_date: profileData.birth_date || null,
       };
 
       await createProfile(newProfile, connection);
@@ -120,7 +114,6 @@ const upsertProfile = async (userId, profileData) => {
         phone_number: profileData.phone_number,
         avatar_url: profileData.avatar_url,
         address: profileData.address,
-        birth_date: profileData.birth_date,
       };
 
       await updateProfile(userId, updateData, connection);
